@@ -1,0 +1,604 @@
+==============================================================================
+ORACLE SQL & PL/SQL CHEAT SHEET (copy-paste syntax)
+==============================================================================
+-- This is a reference file, not a script to run top to bottom (it creates
+-- and drops tables). Copy the block you need into SQL*Plus.
+-- PL/SQL blocks, procedures, functions and triggers end with / on its own line.
+
+
+==============================================================================
+PART 7: COPY-PASTE CHEAT SHEET
+==============================================================================
+-- NOTE: Every block below is ready to paste into SQL*Plus. Table names follow your notes:
+-- employees (emp_id, emp_name, salary, dept_id, manager_id) and departments (dept_id, dept_name)
+-- for SQL, Employees1 (ID, NAME, DEPARTMENT, SALARY) for window functions, and employee +
+-- salary_log for triggers. Change names to match your own tables. In SQL*Plus, PL/SQL blocks and
+-- triggers must end with / on its own line.
+
+
+------------------------------------------------------------------------------
+-- 7.1 Session setup and data dictionary
+------------------------------------------------------------------------------
+SET SERVEROUTPUT ON;
+SET LINESIZE 150;
+SET PAGESIZE 50;
+SET DEFINE OFF;
+
+DESCRIBE employees
+SELECT table_name FROM user_tables;
+SELECT trigger_name, status FROM user_triggers;
+SELECT object_name, object_type FROM user_objects WHERE status = 'INVALID';
+SELECT constraint_name, constraint_type FROM user_constraints WHERE table_name = 'EMPLOYEES';
+SHOW ERRORS
+
+-- NOTE: Data dictionary names are stored in UPPERCASE, so write 'EMPLOYEES' in quotes, not
+-- 'employees'.
+
+
+------------------------------------------------------------------------------
+-- 7.2 Create, alter, drop (DDL)
+------------------------------------------------------------------------------
+CREATE TABLE departments (
+    dept_id   NUMBER PRIMARY KEY,
+    dept_name VARCHAR2(50) NOT NULL
+);
+
+CREATE TABLE employees (
+    emp_id     NUMBER PRIMARY KEY,
+    emp_name   VARCHAR2(50) NOT NULL,
+    salary     NUMBER(10,2) CHECK (salary >= 0),
+    dept_id    NUMBER REFERENCES departments(dept_id),
+    manager_id NUMBER REFERENCES employees(emp_id)
+);
+
+ALTER TABLE employees ADD (email VARCHAR2(100));
+ALTER TABLE employees MODIFY (emp_name VARCHAR2(100));
+ALTER TABLE employees RENAME COLUMN email TO mail;
+ALTER TABLE employees DROP COLUMN mail;
+ALTER TABLE employees ADD CONSTRAINT uq_emp_name UNIQUE (emp_name);
+ALTER TABLE employees DROP CONSTRAINT uq_emp_name;
+
+CREATE TABLE emp_backup AS SELECT * FROM employees;               -- copy structure and data
+CREATE TABLE emp_empty  AS SELECT * FROM employees WHERE 1 = 0;   -- copy structure only
+
+TRUNCATE TABLE emp_backup;                  -- remove all rows, cannot roll back
+DROP TABLE emp_backup;
+DROP TABLE employees CASCADE CONSTRAINTS;   -- drop even if other tables reference it
+
+CREATE SEQUENCE emp_seq START WITH 1 INCREMENT BY 1;
+INSERT INTO employees (emp_id, emp_name) VALUES (emp_seq.NEXTVAL, 'Rahim');
+SELECT emp_seq.CURRVAL FROM dual;
+-- 12c+ alternative: emp_id NUMBER GENERATED ALWAYS AS IDENTITY
+
+-- Datatype | Use
+-- NUMBER, NUMBER(10,2) | Integers and decimals (precision, scale)
+-- VARCHAR2(n) | Variable-length text (Oracle's standard string type)
+-- CHAR(n) | Fixed-length text, padded with spaces
+-- DATE | Date and time to the second
+-- TIMESTAMP | Date and time with fractions of a second
+-- CLOB | Very long text
+
+
+------------------------------------------------------------------------------
+-- 7.3 Insert, update, delete, transactions (DML)
+------------------------------------------------------------------------------
+INSERT INTO employees (emp_id, emp_name, salary, dept_id) VALUES (1, 'Rahim', 30000, 10);
+
+INSERT ALL
+    INTO employee VALUES (101, 'Rahim', 30000)
+    INTO employee VALUES (102, 'Karim', 35000)
+SELECT * FROM dual;
+
+INSERT INTO emp_backup SELECT * FROM employees WHERE dept_id = 10;
+
+UPDATE employees SET salary = salary * 1.10 WHERE dept_id = 10;
+UPDATE employees SET salary = 40000, dept_id = 20 WHERE emp_id = 1;
+
+DELETE FROM employees WHERE emp_id = 1;
+DELETE FROM employees;                      -- removes all rows, can be rolled back
+
+COMMIT;
+ROLLBACK;
+SAVEPOINT sp1;
+ROLLBACK TO sp1;
+
+MERGE INTO employees e
+USING (SELECT 1 AS emp_id, 'Rahim' AS emp_name FROM dual) s
+ON (e.emp_id = s.emp_id)
+WHEN MATCHED THEN UPDATE SET e.emp_name = s.emp_name
+WHEN NOT MATCHED THEN INSERT (emp_id, emp_name) VALUES (s.emp_id, s.emp_name);
+
+
+------------------------------------------------------------------------------
+-- 7.4 SELECT: filtering, sorting, grouping
+------------------------------------------------------------------------------
+SELECT DISTINCT dept_id FROM employees;
+
+SELECT emp_name, salary
+FROM employees
+WHERE salary BETWEEN 30000 AND 50000
+  AND dept_id IN (10, 20)
+  AND emp_name LIKE 'R%'          -- starts with R  ('_a%' = second letter a)
+  AND manager_id IS NOT NULL
+ORDER BY salary DESC, emp_name;
+
+-- Top N
+SELECT * FROM employees ORDER BY salary DESC FETCH FIRST 3 ROWS ONLY;                 -- 12c+
+SELECT * FROM (SELECT * FROM employees ORDER BY salary DESC) WHERE ROWNUM <= 3;       -- any version
+
+-- Rows 4 to 6 (paging)
+SELECT * FROM employees ORDER BY emp_id OFFSET 3 ROWS FETCH NEXT 3 ROWS ONLY;         -- 12c+
+
+SELECT COUNT(*), SUM(salary), AVG(salary), MIN(salary), MAX(salary) FROM employees;
+
+SELECT dept_id, COUNT(*) AS cnt, ROUND(AVG(salary), 2) AS avg_sal
+FROM employees
+GROUP BY dept_id
+HAVING COUNT(*) > 1
+ORDER BY dept_id;
+
+-- NOTE: WHERE filters rows before grouping. HAVING filters groups after. Every non-aggregate
+-- column in SELECT must appear in GROUP BY.
+
+
+------------------------------------------------------------------------------
+-- 7.5 Joins, set operators, subqueries, views
+------------------------------------------------------------------------------
+-- INNER: only matching rows
+SELECT e.emp_name, d.dept_name
+FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+-- LEFT: all employees, even with no department
+SELECT e.emp_name, d.dept_name
+FROM employees e LEFT JOIN departments d ON e.dept_id = d.dept_id;
+
+-- RIGHT and FULL
+SELECT e.emp_name, d.dept_name
+FROM employees e RIGHT JOIN departments d ON e.dept_id = d.dept_id;
+SELECT e.emp_name, d.dept_name
+FROM employees e FULL OUTER JOIN departments d ON e.dept_id = d.dept_id;
+
+-- SELF join: employee and manager (LEFT so the CEO with NULL manager stays)
+SELECT e.emp_name AS employee, m.emp_name AS manager
+FROM employees e LEFT JOIN employees m ON e.manager_id = m.emp_id;
+
+-- CROSS join: every combination
+SELECT e.emp_name, d.dept_name FROM employees e CROSS JOIN departments d;
+
+SELECT dept_id FROM employees
+UNION SELECT dept_id FROM departments;        -- combined, duplicates removed
+
+SELECT dept_id FROM employees
+UNION ALL SELECT dept_id FROM departments;    -- combined, duplicates kept
+
+SELECT dept_id FROM departments
+INTERSECT SELECT dept_id FROM employees;      -- in both
+
+SELECT dept_id FROM departments
+MINUS SELECT dept_id FROM employees;          -- in first, not in second
+
+-- Scalar subquery
+SELECT emp_name, salary FROM employees
+WHERE salary > (SELECT AVG(salary) FROM employees);
+
+-- IN / NOT IN
+SELECT emp_name FROM employees
+WHERE dept_id IN (SELECT dept_id FROM departments WHERE dept_name = 'IT');
+
+-- EXISTS
+SELECT d.dept_name FROM departments d
+WHERE EXISTS (SELECT 1 FROM employees e WHERE e.dept_id = d.dept_id);
+
+-- Correlated subquery: earns more than own department's average
+SELECT emp_name, salary, dept_id FROM employees e
+WHERE salary > (SELECT AVG(salary) FROM employees WHERE dept_id = e.dept_id);
+
+-- View
+CREATE OR REPLACE VIEW v_emp_dept AS
+SELECT e.emp_id, e.emp_name, e.salary, d.dept_name
+FROM employees e JOIN departments d ON e.dept_id = d.dept_id;
+
+SELECT * FROM v_emp_dept;
+DROP VIEW v_emp_dept;
+
+-- NOTE: NOT IN returns no rows if the subquery returns any NULL. Use NOT EXISTS or add WHERE col
+-- IS NOT NULL inside the subquery.
+
+
+------------------------------------------------------------------------------
+-- 7.6 Built-in functions
+------------------------------------------------------------------------------
+SELECT UPPER('rahim'), LOWER('RAHIM'), INITCAP('rahim khan'),
+       LENGTH('Rahim'), SUBSTR('Rahim', 1, 3), INSTR('Rahim', 'h'),
+       REPLACE('Rahim', 'R', 'K'), TRIM('  Rahim  '), LPAD('7', 3, '0'),
+       'Mr. ' || 'Rahim' AS joined
+FROM dual;
+
+SELECT ROUND(123.456, 1), TRUNC(123.456, 1), MOD(10, 3), CEIL(4.2), FLOOR(4.8), ABS(-5)
+FROM dual;
+
+SELECT SYSDATE, ADD_MONTHS(SYSDATE, 3), MONTHS_BETWEEN(SYSDATE, DATE '2026-01-01'),
+       LAST_DAY(SYSDATE), TRUNC(SYSDATE),
+       TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS'),
+       TO_DATE('2026-08-10', 'YYYY-MM-DD')
+FROM dual;
+
+SELECT NVL(manager_id, 0), NVL2(manager_id, 'Has manager', 'Top'), COALESCE(manager_id, dept_id, 0)
+FROM employees;
+
+SELECT emp_name,
+       CASE WHEN salary >= 50000 THEN 'High'
+            WHEN salary >= 30000 THEN 'Medium'
+            ELSE 'Low' END AS band,
+       DECODE(dept_id, 10, 'HR', 20, 'IT', 'Other') AS dept_label
+FROM employees;
+
+
+------------------------------------------------------------------------------
+-- 7.7 Window functions
+------------------------------------------------------------------------------
+SELECT ID, NAME, DEPARTMENT, SALARY,
+       ROW_NUMBER() OVER (ORDER BY SALARY DESC)                          AS row_num,
+       RANK()       OVER (ORDER BY SALARY DESC)                          AS rnk,
+       DENSE_RANK() OVER (PARTITION BY DEPARTMENT ORDER BY SALARY DESC)  AS dept_rank,
+       LAG(SALARY, 1)  OVER (ORDER BY ID)                                AS prev_salary,
+       LEAD(SALARY, 1) OVER (ORDER BY ID)                                AS next_salary,
+       SUM(SALARY) OVER (ORDER BY ID)                                    AS running_total,
+       AVG(SALARY) OVER (PARTITION BY DEPARTMENT)                        AS dept_avg
+FROM Employees1;
+
+-- Top 2 earners in each department (window functions can't go in WHERE, so wrap them)
+SELECT * FROM (
+    SELECT ID, NAME, DEPARTMENT, SALARY,
+           DENSE_RANK() OVER (PARTITION BY DEPARTMENT ORDER BY SALARY DESC) AS rk
+    FROM Employees1
+)
+WHERE rk <= 2;
+
+-- Salaries 50000, 50000, 45000 | Result
+-- ROW_NUMBER() | 1, 2, 3
+-- RANK() | 1, 1, 3 (skips a number after a tie)
+-- DENSE_RANK() | 1, 1, 2 (no gaps)
+
+
+------------------------------------------------------------------------------
+-- 7.8 PL/SQL basics
+------------------------------------------------------------------------------
+DECLARE
+    v_name   employees.emp_name%TYPE;
+    v_salary employees.salary%TYPE;
+    v_bonus  NUMBER := 500;
+    c_rate   CONSTANT NUMBER := 0.1;
+BEGIN
+    SELECT emp_name, salary INTO v_name, v_salary
+    FROM employees WHERE emp_id = 1;
+    DBMS_OUTPUT.PUT_LINE('Name: ' || v_name || ', Salary: ' || v_salary);
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN DBMS_OUTPUT.PUT_LINE('No such employee');
+    WHEN TOO_MANY_ROWS THEN DBMS_OUTPUT.PUT_LINE('More than one row returned');
+    WHEN ZERO_DIVIDE   THEN DBMS_OUTPUT.PUT_LINE('Divide by zero');
+    WHEN OTHERS        THEN DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END;
+/
+
+-- %ROWTYPE: a whole row in one variable
+DECLARE
+    r employees%ROWTYPE;
+BEGIN
+    SELECT * INTO r FROM employees WHERE emp_id = 1;
+    DBMS_OUTPUT.PUT_LINE(r.emp_name || ' earns ' || r.salary);
+END;
+/
+
+-- IF, CASE and loops
+DECLARE
+    v_sal NUMBER := 45000;
+    i     NUMBER := 1;
+BEGIN
+    IF v_sal > 50000 THEN
+        DBMS_OUTPUT.PUT_LINE('High');
+    ELSIF v_sal > 30000 THEN
+        DBMS_OUTPUT.PUT_LINE('Medium');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Low');
+    END IF;
+
+    FOR n IN 1..5 LOOP
+        DBMS_OUTPUT.PUT_LINE('n = ' || n);
+    END LOOP;
+
+    WHILE i <= 3 LOOP
+        DBMS_OUTPUT.PUT_LINE('i = ' || i);
+        i := i + 1;
+    END LOOP;
+
+    LOOP
+        EXIT WHEN i > 5;
+        i := i + 1;
+    END LOOP;
+END;
+/
+
+-- User-defined exception
+DECLARE
+    e_low_salary EXCEPTION;
+    v_sal NUMBER := 500;
+BEGIN
+    IF v_sal < 1000 THEN
+        RAISE e_low_salary;
+    END IF;
+EXCEPTION
+    WHEN e_low_salary THEN DBMS_OUTPUT.PUT_LINE('Salary too low');
+END;
+/
+
+-- Stored procedure
+CREATE OR REPLACE PROCEDURE raise_salary (p_id IN NUMBER, p_pct IN NUMBER) AS
+BEGIN
+    UPDATE employees SET salary = salary + salary * p_pct / 100 WHERE emp_id = p_id;
+    IF SQL%NOTFOUND THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Employee not found');
+    END IF;
+    COMMIT;
+END;
+/
+EXEC raise_salary(1, 10);
+
+-- Stored function
+CREATE OR REPLACE FUNCTION get_salary (p_id IN NUMBER) RETURN NUMBER AS
+    v_sal NUMBER;
+BEGIN
+    SELECT salary INTO v_sal FROM employees WHERE emp_id = p_id;
+    RETURN v_sal;
+END;
+/
+SELECT get_salary(1) FROM dual;
+
+
+------------------------------------------------------------------------------
+-- 7.9 Cursors
+------------------------------------------------------------------------------
+-- Implicit cursor attributes after DML
+BEGIN
+    UPDATE employees SET salary = salary + 1000 WHERE dept_id = 10;
+    DBMS_OUTPUT.PUT_LINE(SQL%ROWCOUNT || ' row(s) updated');
+    IF SQL%NOTFOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Nothing matched');
+    END IF;
+    COMMIT;
+END;
+/
+
+-- Explicit cursor: DECLARE, OPEN, FETCH, CLOSE
+DECLARE
+    CURSOR c_emp IS SELECT emp_id, emp_name, salary FROM employees;
+    v_id   employees.emp_id%TYPE;
+    v_name employees.emp_name%TYPE;
+    v_sal  employees.salary%TYPE;
+BEGIN
+    OPEN c_emp;
+    LOOP
+        FETCH c_emp INTO v_id, v_name, v_sal;
+        EXIT WHEN c_emp%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE(v_id || ' ' || v_name || ' ' || v_sal);
+    END LOOP;
+    CLOSE c_emp;
+END;
+/
+
+-- Cursor FOR loop (opens, fetches and closes for you)
+BEGIN
+    FOR r IN (SELECT emp_name, salary FROM employees) LOOP
+        DBMS_OUTPUT.PUT_LINE(r.emp_name || ' ' || r.salary);
+    END LOOP;
+END;
+/
+
+-- Cursor with a parameter
+DECLARE
+    CURSOR c_dept (p_dept NUMBER) IS
+        SELECT emp_name, salary FROM employees WHERE dept_id = p_dept;
+BEGIN
+    FOR r IN c_dept(10) LOOP
+        DBMS_OUTPUT.PUT_LINE(r.emp_name || ' ' || r.salary);
+    END LOOP;
+END;
+/
+
+-- Attribute | Meaning | Works on
+-- %FOUND | TRUE if the last fetch or DML touched a row | Implicit (SQL%) and explicit
+-- %NOTFOUND | TRUE if it did not | Implicit and explicit
+-- %ROWCOUNT | Number of rows affected or fetched so far | Implicit and explicit
+-- %ISOPEN | TRUE if the cursor is open | Explicit only (always FALSE for SQL%)
+
+
+------------------------------------------------------------------------------
+-- 7.10 Triggers
+------------------------------------------------------------------------------
+-- NOTE: Template (not runnable as-is, fill in the choices):
+
+-- CREATE OR REPLACE TRIGGER trigger_name
+-- BEFORE | AFTER   INSERT | UPDATE [OF column] | DELETE   [OR ...]
+-- ON table_name
+-- [FOR EACH ROW]
+-- [WHEN (condition)]      -- no colon here: WHEN (NEW.salary < OLD.salary)
+-- BEGIN
+--     -- :NEW.col = new value (INSERT, UPDATE)
+--     -- :OLD.col = old value (UPDATE, DELETE)
+-- END;
+-- /
+
+-- Tables for the trigger examples
+CREATE TABLE employee   (emp_id NUMBER, name VARCHAR2(50), salary NUMBER);
+CREATE TABLE salary_log (emp_id NUMBER, old_salary NUMBER, new_salary NUMBER, change_date DATE);
+
+-- AFTER UPDATE: log old and new salary
+CREATE OR REPLACE TRIGGER trg_salary_update
+AFTER UPDATE OF salary ON employee
+FOR EACH ROW
+BEGIN
+    INSERT INTO salary_log (emp_id, old_salary, new_salary, change_date)
+    VALUES (:OLD.emp_id, :OLD.salary, :NEW.salary, SYSDATE);
+END;
+/
+
+-- BEFORE DELETE: log the row being removed
+CREATE OR REPLACE TRIGGER trg_employee_delete
+BEFORE DELETE ON employee
+FOR EACH ROW
+BEGIN
+    INSERT INTO salary_log (emp_id, old_salary, new_salary, change_date)
+    VALUES (:OLD.emp_id, :OLD.salary, NULL, SYSDATE);
+END;
+/
+
+-- BEFORE UPDATE: auto-correct a bad value (only BEFORE row triggers can assign :NEW)
+CREATE OR REPLACE TRIGGER trg_before_salary_update
+BEFORE UPDATE OF salary ON employee
+FOR EACH ROW
+BEGIN
+    IF :NEW.salary < 0 THEN
+        :NEW.salary := 0;
+    END IF;
+END;
+/
+
+-- BEFORE UPDATE with WHEN: block a pay cut
+CREATE OR REPLACE TRIGGER trg_no_pay_cut
+BEFORE UPDATE OF salary ON employee
+FOR EACH ROW
+WHEN (NEW.salary < OLD.salary)
+BEGIN
+    RAISE_APPLICATION_ERROR(-20002, 'Salary cannot be decreased');
+END;
+/
+
+-- One trigger for all three events (drop the separate salary triggers first, or rows get logged twice)
+CREATE OR REPLACE TRIGGER trg_employee_audit
+AFTER INSERT OR UPDATE OR DELETE ON employee
+FOR EACH ROW
+BEGIN
+    IF INSERTING THEN
+        INSERT INTO salary_log (emp_id, old_salary, new_salary, change_date)
+        VALUES (:NEW.emp_id, NULL, :NEW.salary, SYSDATE);
+    ELSIF UPDATING THEN
+        INSERT INTO salary_log (emp_id, old_salary, new_salary, change_date)
+        VALUES (:OLD.emp_id, :OLD.salary, :NEW.salary, SYSDATE);
+    ELSIF DELETING THEN
+        INSERT INTO salary_log (emp_id, old_salary, new_salary, change_date)
+        VALUES (:OLD.emp_id, :OLD.salary, NULL, SYSDATE);
+    END IF;
+END;
+/
+
+-- Manage
+SELECT trigger_name, status FROM user_triggers;
+ALTER TRIGGER trg_employee_audit DISABLE;
+ALTER TRIGGER trg_employee_audit ENABLE;
+DROP TRIGGER trg_employee_audit;
+
+-- NOTE: Always name the columns in the trigger's INSERT INTO salary_log (...). A column-count
+-- mismatch makes the trigger invalid and later DML fails with ORA-04098.
+
+
+------------------------------------------------------------------------------
+-- 7.11 Common exam and interview queries
+------------------------------------------------------------------------------
+-- 1. Second highest salary
+SELECT MAX(salary) FROM employees
+WHERE salary < (SELECT MAX(salary) FROM employees);
+
+-- 2. Nth highest salary (here N = 3)
+SELECT DISTINCT salary FROM (
+    SELECT salary, DENSE_RANK() OVER (ORDER BY salary DESC) AS rk FROM employees
+)
+WHERE rk = 3;
+
+-- 3. Top 3 earners
+SELECT * FROM employees ORDER BY salary DESC FETCH FIRST 3 ROWS ONLY;
+
+-- 4. Highest-paid employee in each department
+SELECT * FROM (
+    SELECT e.*, RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) AS rk FROM employees e
+)
+WHERE rk = 1;
+
+-- 5. Employees earning more than their department average
+SELECT emp_name, salary, dept_id FROM employees e
+WHERE salary > (SELECT AVG(salary) FROM employees WHERE dept_id = e.dept_id);
+
+-- 6. Employees earning more than their manager
+SELECT e.emp_name, e.salary, m.emp_name AS manager, m.salary AS mgr_salary
+FROM employees e JOIN employees m ON e.manager_id = m.emp_id
+WHERE e.salary > m.salary;
+
+-- 7. Employee with manager name (CEO included)
+SELECT e.emp_name AS employee, NVL(m.emp_name, 'No manager') AS manager
+FROM employees e LEFT JOIN employees m ON e.manager_id = m.emp_id;
+
+-- 8. Employees with no department
+SELECT * FROM employees WHERE dept_id IS NULL;
+
+-- 9. Departments with no employees
+SELECT d.dept_name
+FROM departments d LEFT JOIN employees e ON d.dept_id = e.dept_id
+WHERE e.emp_id IS NULL;
+
+-- 10. Employee count per department, including departments with zero
+SELECT d.dept_name, COUNT(e.emp_id) AS emp_count
+FROM departments d LEFT JOIN employees e ON d.dept_id = e.dept_id
+GROUP BY d.dept_name;
+
+-- 11. Departments whose average salary is above 40000
+SELECT d.dept_name, ROUND(AVG(e.salary), 2) AS avg_sal
+FROM employees e JOIN departments d ON e.dept_id = d.dept_id
+GROUP BY d.dept_name
+HAVING AVG(e.salary) > 40000;
+
+-- 12. Total salary per department, highest first
+SELECT dept_id, SUM(salary) AS total FROM employees GROUP BY dept_id ORDER BY total DESC;
+
+-- 13. Find duplicate names
+SELECT emp_name, COUNT(*) FROM employees GROUP BY emp_name HAVING COUNT(*) > 1;
+
+-- 14. Delete duplicates, keep one row per name
+DELETE FROM employees
+WHERE ROWID NOT IN (SELECT MIN(ROWID) FROM employees GROUP BY emp_name);
+
+-- 15. Difference from the previous row
+SELECT emp_id, salary, salary - LAG(salary) OVER (ORDER BY emp_id) AS diff FROM employees;
+
+-- 16. Running total of salary
+SELECT emp_id, salary, SUM(salary) OVER (ORDER BY emp_id) AS running_total FROM employees;
+
+-- 17. Names that start with a vowel
+SELECT emp_name FROM employees WHERE REGEXP_LIKE(emp_name, '^[AEIOUaeiou]');
+
+-- 18. Employees in the same department as employee 1
+SELECT emp_name FROM employees
+WHERE dept_id = (SELECT dept_id FROM employees WHERE emp_id = 1) AND emp_id <> 1;
+
+
+------------------------------------------------------------------------------
+-- 7.12 Common theory questions, one-line answers
+------------------------------------------------------------------------------
+-- Question | Answer
+-- DELETE vs TRUNCATE vs DROP | DELETE removes chosen rows, can be rolled back. TRUNCATE removes
+-- all rows fast, cannot be rolled back. DROP removes the whole table.
+-- WHERE vs HAVING | WHERE filters rows before grouping. HAVING filters groups after aggregation.
+-- PRIMARY KEY vs UNIQUE | Primary key: NOT NULL, one per table. Unique: allows NULL, many per
+-- table.
+-- UNION vs UNION ALL | UNION removes duplicates. UNION ALL keeps them and is faster.
+-- INNER vs LEFT JOIN | INNER keeps only matches. LEFT keeps every left row and fills NULL where
+-- there is no match.
+-- Procedure vs function | A function must RETURN a value and can be used inside SELECT. A
+-- procedure need not return one and is run with EXEC.
+-- %TYPE vs %ROWTYPE | %TYPE copies one column's datatype. %ROWTYPE copies a whole row's structure.
+-- Row vs statement trigger | FOR EACH ROW fires once per affected row and can use :OLD / :NEW.
+-- Without it, the trigger fires once per statement.
+-- COMMIT vs ROLLBACK vs SAVEPOINT | COMMIT makes changes permanent. ROLLBACK undoes them.
+-- SAVEPOINT marks a point you can ROLLBACK TO.
+-- Why use a view? | It hides complexity, restricts which columns users see, and always reflects
+-- the current table data.
+-- Why can't a row trigger read its own table? | Mutating table error, ORA-04091.
+
