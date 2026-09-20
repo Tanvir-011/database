@@ -1,0 +1,38 @@
+2. AFTER Trigger
+
+INSERT/UPDATE/DELETE হওয়ার পরে Trigger execute হয়।
+
+Example: Salary change হলে log রাখা
+CREATE TABLE salary_log (
+    emp_id NUMBER,
+    old_salary NUMBER,
+    new_salary NUMBER
+);
+
+Trigger:
+
+CREATE OR REPLACE TRIGGER trg_after_update
+AFTER UPDATE OF salary ON employee
+FOR EACH ROW
+BEGIN
+    INSERT INTO salary_log
+    VALUES (:OLD.emp_id, :OLD.salary, :NEW.salary);
+END;
+/
+
+এখন:
+
+UPDATE employee
+SET salary = 30000
+WHERE emp_id = 101;
+
+salary_log table-এ automatically data যাবে:
+
+SELECT * FROM salary_log;
+
+EMP_ID   OLD_SALARY   NEW_SALARY
+101      25000        30000
+
+👉 অর্থাৎ আগে UPDATE হবে, তারপর Trigger log তৈরি করবে।
+
+

@@ -1,0 +1,28 @@
+--DELETE Trigger
+
+
+CREATE OR REPLACE TRIGGER trg_employee_delete
+BEFORE DELETE ON employee
+FOR EACH ROW
+BEGIN
+    INSERT INTO salary_log
+    VALUES (
+        :OLD.emp_id,
+        :OLD.salary,
+        NULL,
+        SYSDATE
+    );
+END;
+/
+
+--এখানে:
+--:OLD.emp_id
+--:OLD.salary
+--ব্যবহার করা হয়েছে, কারণ DELETE-এর সময় নতুন row থাকে না।
+
+
+
+DELETE FROM employee
+WHERE emp_id = 101;
+
+SELECT * FROM salary_log;

@@ -1,0 +1,43 @@
+---একটি Simple Trigger
+
+-----প্রথমে Student table:
+
+CREATE TABLE student (
+    student_id NUMBER,
+    name       VARCHAR2(50),
+    age        NUMBER
+);
+
+-----এখন Audit table:
+CREATE TABLE student_log (
+    student_id NUMBER,
+    name       VARCHAR2(50),
+    log_date   DATE
+);
+
+-----এখন Trigger তৈরি করি:
+
+CREATE OR REPLACE TRIGGER trg_student_insert
+AFTER INSERT ON student
+FOR EACH ROW
+BEGIN
+    INSERT INTO student_log
+    VALUES (:NEW.student_id, :NEW.name, SYSDATE);
+END;
+/
+
+
+-----এখানে কী হচ্ছে?
+INSERT INTO student
+       ↓
+Trigger automatically fires
+       ↓
+student_log-এ তথ্য INSERT
+
+INSERT INTO student
+VALUES (102, 'Rahim', 75);
+
+
+select * from student;
+
+select * from student_log;

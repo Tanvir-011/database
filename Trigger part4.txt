@@ -1,0 +1,153 @@
+--BEFORE এবং AFTER Trigger
+
+--Trigger-এর আরেকটি গুরুত্বপূর্ণ বিষয় হলো কখন Trigger execute হবে।
+
+--২. Trigger-এর প্রধান দুই ধরন
+
+--Event-এর আগে নাকি পরে Trigger চলবে তার ভিত্তিতে:
+
+--BEFORE Trigger
+
+--মূল database operation-এর আগে execute হয়।
+
+--AFTER Trigger
+
+--মূল database operation-এর পরে execute হয়
+
+
+
+CREATE TABLE employee (
+    emp_id NUMBER,
+    name VARCHAR2(50),
+    salary NUMBER
+);
+
+
+INSERT INTO employee VALUES (101, 'Rahim', 30000);
+INSERT INTO employee VALUES (102, 'Karim', 35000);
+INSERT INTO employee VALUES (103, 'Hasan', 40000);
+INSERT INTO employee VALUES (104, 'Jamal', 45000);
+INSERT INTO employee VALUES (105, 'Sakib', 50000);
+
+COMMIT;
+
+
+SELECT * FROM employee;
+
+
+--৪. BEFORE INSERT Trigger
+
+--ধরুন, আমরা চাই Employee insert করার আগে salary check হবে।
+
+--যদি salary 20000-এর কম হয়, তাহলে salary automatically 20000 করে দেওয়া হবে।
+
+--Trigger:
+CREATE OR REPLACE TRIGGER trg_before_employee
+BEFORE INSERT ON employee
+FOR EACH ROW
+BEGIN
+    IF :NEW.salary < 20000 THEN
+        :NEW.salary := 20000;
+    END IF;
+END;
+/
+
+--এখন নতুন employee insert করি:
+
+INSERT INTO employee
+VALUES (106, 'Rony', 15000);
+
+SELECT * FROM employee
+WHERE emp_id = 106;
+
+
+--Result হবে:
+
+
+| EMP_ID | NAME |    SALARY |
+| -----: | ---- | --------: |
+|    106 | Rony | **20000** |
+
+
+কারণ:
+
+User gives salary = 15000
+             ↓
+       BEFORE Trigger
+             ↓
+     salary = 20000
+             ↓
+       INSERT happens
+
+--এখানে :NEW কেন?
+
+--INSERT করার সময় নতুন যে data আসছে তাকে :NEW দিয়ে বোঝানো হয়।
+
+--:NEW.salary
+
+--মানে নতুন salary।
+
+
+--৫. BEFORE UPDATE Trigger
+
+--এবার ধরুন, আমরা চাই Employee-এর salary update করার আগে salary negative কিনা check করতে।
+
+
+CREATE OR REPLACE TRIGGER trg_before_salary_update
+BEFORE UPDATE OF salary ON employee
+FOR EACH ROW
+BEGIN
+    IF :NEW.salary < 0 THEN
+        :NEW.salary := 0;
+    END IF;
+END;
+/
+--এখন:
+
+UPDATE employee
+SET salary = -5000
+WHERE emp_id = 101;
+
+--Trigger automatically negative salary পরিবর্তন করে:
+
+----                 -5000 → 0
+
+তাই:
+
+SELECT * FROM employee
+WHERE emp_id = 101;
+
+Result:
+
+101   Rahim   0
+
+--৬. BEFORE DELETE Trigger
+
+--এখানে একটি গুরুত্বপূর্ণ বিষয় আছে।
+
+--ধরুন আমরা Employee delete করার আগে জানতে চাই কোন employee delete হতে যাচ্ছে।
+
+
+CREATE OR REPLACE TRIGGER trg_before_delete
+BEFORE DELETE ON employee
+FOR EACH ROW
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(
+        'Employee ' || :OLD.name || ' will be deleted.'
+    );
+END;
+/
+
+--এখন:
+
+DELETE FROM employee
+WHERE emp_id = 105;
+
+--Trigger আগে execute হবে।
+
+Employee Sakib will be deleted.
+
+--তারপর employee delete হবে।
+
+
+

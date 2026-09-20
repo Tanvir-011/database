@@ -1,0 +1,215 @@
+Microsoft Windows [Version 10.0.26100.6584]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Users\Lenovo>sqlplus
+
+SQL*Plus: Release 23.26.2.0.0 - Production on Fri Jul 24 11:50:34 2026
+Version 23.26.2.0.0
+
+Copyright (c) 1982, 2026, Oracle.  All rights reserved.
+
+Enter user-name: system
+Enter password:
+Last Successful login time: Fri Jul 24 2026 11:49:36 +06:00
+
+Connected to:
+Oracle AI Database 26ai Free Release 23.26.2.0.0 - Develop, Learn, and Run for Free
+Version 23.26.2.0.0
+
+SQL> CREATE TABLE Employees (
+  2      ID NUMBER(5) PRIMARY KEY,
+  3      NAME VARCHAR2(50) NOT NULL,
+  4      DEPARTMENT VARCHAR2(30),
+  5      SALARY NUMBER(10, 2)
+  6  );
+CREATE TABLE Employees (
+             *
+ERROR at line 1:
+ORA-00955: name is already used by an existing object
+Help: https://docs.oracle.com/error-help/db/ora-00955/
+
+
+SQL> describe Employess
+ERROR:
+ORA-04043: Object Employess does not exist.
+Help: https://docs.oracle.com/error-help/db/ora-04043/
+
+
+SQL> describe Employees
+ Name                                      Null?    Type
+ ----------------------------------------- -------- ----------------------------
+ EMP_ID                                    NOT NULL NUMBER
+ EMP_NAME                                  NOT NULL VARCHAR2(50)
+ SALARY                                             NUMBER(10,2)
+ DEPT_ID                                            NUMBER
+ MANAGER_ID                                         NUMBER
+
+SQL> CREATE TABLE Employees1 (
+  2      ID NUMBER(5) PRIMARY KEY,
+  3      NAME VARCHAR2(50) NOT NULL,
+  4      DEPARTMENT VARCHAR2(30),
+  5      SALARY NUMBER(10, 2)
+  6  );
+
+Table created.
+
+SQL> -- ১ নম্বর কর্মচারী
+SQL> INSERT INTO Employees1 (ID, NAME, DEPARTMENT, SALARY)
+  2  VALUES (101, 'Rahim Islam', 'IT', 50000);
+
+1 row created.
+
+SQL>
+SQL> -- ২ নম্বর কর্মচারী
+SQL> INSERT INTO Employees1 (ID, NAME, DEPARTMENT, SALARY)
+  2  VALUES (102, 'Karim Hassan', 'IT', 50000);
+
+1 row created.
+
+SQL>
+SQL> -- ৩ নম্বর কর্মচারী
+SQL> INSERT INTO Employees1 (ID, NAME, DEPARTMENT, SALARY)
+  2  VALUES (103, 'Nusrat Jahan', 'HR', 45000);
+
+1 row created.
+
+SQL>
+SQL> -- ৪ নম্বর কর্মচারী
+SQL> INSERT INTO Employees1 (ID, NAME, DEPARTMENT, SALARY)
+  2  VALUES (104, 'Tanvir Hossain', 'HR', 40000);
+
+1 row created.
+
+SQL>
+SQL> -- ৫ নম্বর কর্মচারী
+SQL> INSERT INTO Employees1 (ID, NAME, DEPARTMENT, SALARY)
+  2  VALUES (105, 'Ayesha Siddiqua', 'Finance', 60000);
+
+1 row created.
+
+SQL> -- ডাটাবেসে পরিবর্তন স্থায়ীভাবে সেভ করার জন্য
+SQL> COMMIT;
+
+Commit complete.
+
+SQL>
+SQL> -- টেবিলে ঢুকানো সব ডাটা একসাথে দেখার জন্য
+SQL> SELECT * FROM Employees;
+
+    EMP_ID EMP_NAME                                               SALARY
+---------- -------------------------------------------------- ----------
+   DEPT_ID MANAGER_ID
+---------- ----------
+       101 Rahim Chowdhury                                        120000
+        10
+
+       102 Karim Hasan                                             85000
+        20        101
+
+       104 Tanvir Ahmed                                            45000
+        20        102
+
+
+SQL> SET LINESIZE 150;
+SQL> SELECT * FROM Employees;
+
+    EMP_ID EMP_NAME                                               SALARY    DEPT_ID MANAGER_ID
+---------- -------------------------------------------------- ---------- ---------- ----------
+       101 Rahim Chowdhury                                        120000         10
+       102 Karim Hasan                                             85000         20        101
+       104 Tanvir Ahmed                                            45000         20        102
+
+SQL>  COMMIT;
+
+Commit complete.
+
+SQL> SELECT ID, Name, Salary,
+  2         ROW_NUMBER() OVER (ORDER BY Salary DESC) AS Row_Num
+  3  FROM Employees;
+SELECT ID, Name, Salary,
+           *
+ERROR at line 1:
+ORA-00904: "NAME": invalid identifier
+Help: https://docs.oracle.com/error-help/db/ora-00904/
+
+
+SQL> SELECT ID, Name, Salary,
+  2         ROW_NUMBER() OVER (ORDER BY Salary DESC) AS Row_Num
+  3  FROM Employees1;
+
+        ID NAME                                                   SALARY    ROW_NUM
+---------- -------------------------------------------------- ---------- ----------
+       105 Ayesha Siddiqua                                         60000          1
+       101 Rahim Islam                                             50000          2
+       102 Karim Hassan                                            50000          3
+       103 Nusrat Jahan                                            45000          4
+       104 Tanvir Hossain                                          40000          5
+
+SQL> FROM Employees;
+SP2-0734: unknown command beginning "FROM Emplo..." - rest of line ignored.
+Help: https://docs.oracle.com/error-help/db/sp2-0734/
+SQL> FROM Employees; SELECT * FROM Employees1;
+SP2-0734: unknown command beginning "FROM Emplo..." - rest of line ignored.
+Help: https://docs.oracle.com/error-help/db/sp2-0734/
+SQL>  SELECT * FROM Employees1;
+
+        ID NAME                                               DEPARTMENT                         SALARY
+---------- -------------------------------------------------- ------------------------------ ----------
+       101 Rahim Islam                                        IT                                  50000
+       102 Karim Hassan                                       IT                                  50000
+       103 Nusrat Jahan                                       HR                                  45000
+       104 Tanvir Hossain                                     HR                                  40000
+       105 Ayesha Siddiqua                                    Finance                             60000
+
+SQL> SELECT ID, Name, Salary,
+  2         ROW_NUMBER() OVER (ORDER BY Salary DESC) AS Row_Num
+  3  FROM Employees1;
+
+        ID NAME                                                   SALARY    ROW_NUM
+---------- -------------------------------------------------- ---------- ----------
+       105 Ayesha Siddiqua                                         60000          1
+       101 Rahim Islam                                             50000          2
+       102 Karim Hassan                                            50000          3
+       103 Nusrat Jahan                                            45000          4
+       104 Tanvir Hossain                                          40000          5
+
+SQL> SELECT ID, Name, Salary,
+  2         RANK() OVER (ORDER BY Salary DESC) AS Salary_Rank
+  3  FROM Employees1;
+
+        ID NAME                                                   SALARY SALARY_RANK
+---------- -------------------------------------------------- ---------- -----------
+       105 Ayesha Siddiqua                                         60000           1
+       101 Rahim Islam                                             50000           2
+       102 Karim Hassan                                            50000           2
+       103 Nusrat Jahan                                            45000           4
+       104 Tanvir Hossain                                          40000           5
+
+SQL> SELECT Name, Salary,
+  2         LAG(Salary, 1) OVER (ORDER BY Salary DESC) AS Previous_Salary
+  3  FROM Employees1;
+
+NAME                                                   SALARY PREVIOUS_SALARY
+-------------------------------------------------- ---------- ---------------
+Ayesha Siddiqua                                         60000
+Rahim Islam                                             50000           60000
+Karim Hassan                                            50000           50000
+Nusrat Jahan                                            45000           50000
+Tanvir Hossain                                          40000           45000
+
+SQL> -- ডিপার্টমেন্ট অনুসারে আলাদা র্যাঙ্কিং
+SQL> SELECT ID, Name, Department, Salary,
+  2         DENSE_RANK() OVER (PARTITION BY Department ORDER BY Salary DESC) AS Dept_Rank
+  3  FROM Employees1;
+
+        ID NAME                                               DEPARTMENT                         SALARY  DEPT_RANK
+---------- -------------------------------------------------- ------------------------------ ---------- ----------
+       105 Ayesha Siddiqua                                    Finance                             60000          1
+       103 Nusrat Jahan                                       HR                                  45000          1
+       104 Tanvir Hossain                                     HR                                  40000          2
+       101 Rahim Islam                                        IT                                  50000          1
+       102 Karim Hassan                                       IT                                  50000          1
+
+SQL>
+
+

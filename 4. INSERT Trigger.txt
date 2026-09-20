@@ -1,0 +1,20 @@
+4. INSERT Trigger
+
+শুধু INSERT হলে execute করবে।
+
+CREATE OR REPLACE TRIGGER trg_insert_emp
+AFTER INSERT ON employee
+FOR EACH ROW
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('New employee inserted');
+END;
+/
+
+তারপর:
+
+INSERT INTO employee
+VALUES (102, 'Karim', 25000);
+
+Output:
+
+New employee inserted

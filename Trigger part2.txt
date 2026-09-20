@@ -1,0 +1,55 @@
+----UPDATE Trigger-এর উদাহরণ
+--ধরুন Employee-এর salary পরিবর্তন হলে আমরা সেটা log করতে চাই।
+
+
+CREATE TABLE employee (
+    emp_id NUMBER,
+    name VARCHAR2(50),
+    salary NUMBER
+);
+
+
+CREATE TABLE salary_log (
+    emp_id NUMBER,
+    old_salary NUMBER,
+    new_salary NUMBER,
+    change_date DATE
+);
+
+
+CREATE OR REPLACE TRIGGER trg_salary_update
+AFTER UPDATE OF salary ON employee
+FOR EACH ROW
+BEGIN
+    INSERT INTO salary_log
+    VALUES (
+        :OLD.emp_id,
+        :OLD.salary,
+        :NEW.salary,
+        SYSDATE
+    );
+END;
+/
+
+
+
+INSERT ALL
+    INTO employee VALUES (101, 'Rahim', 30000)
+    INTO employee VALUES (102, 'Karim', 35000)
+    INTO employee VALUES (103, 'Hasan', 40000)
+    INTO employee VALUES (104, 'Jamal', 45000)
+    INTO employee VALUES (105, 'Sakib', 50000)
+SELECT * FROM dual;
+
+
+SELECT * FROM employee;
+
+
+UPDATE employee
+SET salary = 50000
+WHERE emp_id = 101;
+
+
+SELECT * FROM salary_log;
+
+

@@ -1,0 +1,262 @@
+SQL> -- স্ক্রিনে আউটপুট দেখার জন্য এটি একবার অন করতে হয়
+SQL> SET SERVEROUTPUT ON;
+
+ DECLARE
+      -- ভ্যারিয়েবল ডিক্লেয়ারেশন (Data Types: NUMBER, VARCHAR2, DATE ইত্যাদি)
+       v_message VARCHAR2(50) := 'Hello MURAD World, Welcome to PL/SQL!';
+   BEGIN
+       -- আউটপুট প্রিন্ট করার কমান্ড
+        DBMS_OUTPUT.PUT_LINE(v_message);
+    END;
+    /
+Hello World, Welcome to PL/SQL!
+
+PL/SQL procedure successfully completed.
+
+
+DROP TABLE Employees;
+
+SQL> CREATE TABLE Employees (
+       ID NUMBER(5) PRIMARY KEY,
+      NAME VARCHAR2(50) NOT NULL,
+        DEPARTMENT VARCHAR2(30),
+        SALARY NUMBER(10, 2)
+    );
+
+
+SQL>
+
+-- ১ নম্বর কর্মচারী
+INSERT INTO Employees (ID, NAME, DEPARTMENT, SALARY)
+VALUES (101, 'Rahim Islam', 'IT', 50000);
+
+-- ২ নম্বর কর্মচারী
+INSERT INTO Employees (ID, NAME, DEPARTMENT, SALARY)
+VALUES (102, 'Karim Hassan', 'IT', 50000);
+
+-- ৩ নম্বর কর্মচারী
+INSERT INTO Employees (ID, NAME, DEPARTMENT, SALARY)
+VALUES (103, 'Nusrat Jahan', 'HR', 45000);
+
+-- ৪ নম্বর কর্মচারী
+INSERT INTO Employees (ID, NAME, DEPARTMENT, SALARY)
+VALUES (104, 'Tanvir Hossain', 'HR', 40000);
+
+-- ৫ নম্বর কর্মচারী
+INSERT INTO Employees (ID, NAME, DEPARTMENT, SALARY)
+VALUES (105, 'Ayesha Siddiqua', 'Finance', 60000);
+
+SQL> describe employees
+ Name                                      Null?    Type
+ ----------------------------------------- -------- ----------------------------
+ ID                                        NOT NULL NUMBER(5)
+ NAME                                      NOT NULL VARCHAR2(50)
+ DEPARTMENT                                         VARCHAR2(30)
+ SALARY                                             NUMBER(10,2)
+
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_rows_updated NUMBER;
+BEGIN
+    -- IT ডিপার্টমেন্টের কর্মীদের বেতন ১০% বাড়ানো হচ্ছে
+    UPDATE Employees
+    SET Salary = Salary + (Salary * 0.10)
+    WHERE Department_Id = 60; -- (আপনার টেবিল অনুযায়ী কলামের নাম ও ভ্যালু দিন)
+
+    -- Implicit Cursor-এর অ্যাট্রিবিউট ব্যবহার
+    IF SQL%FOUND THEN
+        v_rows_updated := SQL%ROWCOUNT;
+        DBMS_OUTPUT.PUT_LINE('মোট ' || v_rows_updated || ' জনের বেতন আপডেট করা হয়েছে।');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('কোনো কর্মীর তথ্য আপডেট হয়নি।');
+    END IF;
+
+    COMMIT;
+END;
+/
+
+??? 2 ???? ???? ????? ??? ??????
+
+PL/SQL procedure successfully completed.
+
+SQL> exit
+Disconnected from Oracle AI Database 26ai Free Release 23.26.2.0.0 - Develop, Learn, and Run for Free
+Version 23.26.2.0.0
+
+C:\Windows\System32>chcp 65001
+Active code page: 65001
+
+C:\Windows\System32>set NLS_LANG=.AL32UTF8
+
+C:\Windows\System32>sqlplus
+
+SQL*Plus: Release 23.26.2.0.0 - Production on Thu Aug 6 21:22:50 2026
+Version 23.26.2.0.0
+
+Copyright (c) 1982, 2026, Oracle.  All rights reserved.
+
+Enter user-name: system
+Enter password:
+Last Successful login time: Thu Aug 06 2026 18:25:20 +06:00
+
+Connected to:
+Oracle AI Database 26ai Free Release 23.26.2.0.0 - Develop, Learn, and Run for Free
+Version 23.26.2.0.0
+
+SQL>select * from employees;
+
+
+------Implicit Cursor-এর উদাহরণ:
+
+SQL> SET SERVEROUTPUT ON;
+
+DECLARE
+    v_rows_updated NUMBER;
+BEGIN
+    -- IT ডিপার্টমেন্টের কর্মীদের বেতন ১০% বাড়ানো হচ্ছে
+    UPDATE Employees
+    SET Salary = Salary + (Salary * 0.10)
+    WHERE Department = 'IT';
+
+    -- SQL%FOUND এবং SQL%ROWCOUNT হলো Implicit Cursor-এর অ্যাট্রিবিউট
+    IF SQL%FOUND THEN
+        v_rows_updated := SQL%ROWCOUNT;
+        DBMS_OUTPUT.PUT_LINE('মোট ' || v_rows_updated || ' জনের বেতন আপডেট করা হয়েছে।');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('কোনো কর্মীর তথ্য আপডেট হয়নি।');
+    END IF;
+
+    COMMIT;
+END;
+/
+
+
+মোট 2 জনের বেতন আপডেট করা হয়েছে।
+
+PL/SQL procedure successfully completed.
+
+
+
+SQL>
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_rows_updated NUMBER;
+BEGIN
+    -- IT ডিপার্টমেন্টের কর্মীদের বেতন ১০% বাড়ানো হচ্ছে
+    UPDATE Employees
+    SET Salary = Salary + (Salary * 0.10)
+    WHERE Department = 'ITT';
+
+    -- SQL%FOUND এবং SQL%ROWCOUNT হলো Implicit Cursor-এর অ্যাট্রিবিউট
+    IF SQL%FOUND THEN
+        v_rows_updated := SQL%ROWCOUNT;
+        DBMS_OUTPUT.PUT_LINE('মোট ' || v_rows_updated || ' জনের বেতন আপডেট করা হয়েছে।');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('কোনো কর্মীর তথ্য আপডেট হয়নি।');
+    END IF;
+
+    COMMIT;
+END;
+/
+
+
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_rows_updated NUMBER;
+BEGIN
+    -- IT ডিপার্টমেন্টের কর্মীদের বেতন ১০% বাড়ানো হচ্ছে
+    UPDATE Employees
+    SET Salary = Salary + (Salary * 0.10)
+    WHERE Department = 'ITT';
+
+    -- SQL%FOUND এবং SQL%ROWCOUNT হলো Implicit Cursor-এর অ্যাট্রিবিউট
+    IF SQL%NOTFOUND THEN
+        v_rows_updated := SQL%ROWCOUNT;
+        DBMS_OUTPUT.PUT_LINE('মোট ' || v_rows_updated || ' জনের বেতন আপডেট করা হয়েছে।');
+ 
+    END IF;
+
+    COMMIT;
+END;
+/
+
+
+
+
+SELECT ID, Name, Salary
+        FROM Employees
+        WHERE Department = 'IT';
+
+
+
+
+
+-----Explicit Cursor (এক্সপ্লিসিট কার্সর)
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+    -- ১. DECLARE: কার্সর তৈরি করা
+    CURSOR c_emp IS
+        SELECT ID, Name, Salary
+        FROM Employees
+        WHERE Department = 'IT';
+ 
+    -- ডাটা রাখার জন্য ভ্যারিয়েবল
+    v_id Employees.ID%TYPE;
+    v_name Employees.Name%TYPE;
+    v_salary Employees.Salary%TYPE;
+BEGIN
+    -- ২. OPEN: কার্সর ওপেন করা
+    OPEN c_emp;
+ 
+    LOOP
+        -- ৩. FETCH: এক এক করে রো ভ্যারিয়েবলে নেওয়া
+        FETCH c_emp INTO v_id, v_name, v_salary;
+ 
+        -- ডাটা না পেলে লুপ থেকে বের হয়ে যাওয়া
+        EXIT WHEN c_emp%NOTFOUND;
+ 
+        -- ডাটা প্রিন্ট করা
+        DBMS_OUTPUT.PUT_LINE('ID: ' || v_id || ' | Name: ' || v_name || ' | Salary: ' || v_salary);
+    END LOOP;
+ 
+    -- ৪. CLOSE: কার্সর ক্লোজ করা
+    CLOSE c_emp;
+END;
+/
+
+
+
+
+
+-----FOR LOOP সহ Explicit Cursor (সহজ ও আধুনিক পদ্ধতি)
+SET SERVEROUTPUT ON;
+
+DECLARE
+    CURSOR c_emp IS
+        SELECT ID, Name, Salary FROM Employees;
+BEGIN
+    -- FOR Loop নিজেই OPEN, FETCH এবং CLOSE সামলে নেয়
+    FOR emp_record IN c_emp LOOP
+        DBMS_OUTPUT.PUT_LINE('Name: ' || emp_record.Name || ' - Salary: ' || emp_record.Salary);
+    END LOOP;
+END;
+/
+
+
+Name: Rahim Islam - Salary: 55000
+Name: Karim Hassan - Salary: 55000
+Name: Nusrat Jahan - Salary: 45000
+Name: Tanvir Hossain - Salary: 40000
+Name: Ayesha Siddiqua - Salary: 60000
+
+PL/SQL procedure successfully completed.
+
+SQL> exit
